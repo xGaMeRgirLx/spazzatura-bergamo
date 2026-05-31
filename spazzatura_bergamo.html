@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spazzatura Bergamo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:wght@300;600&display=swap');
+
+  :root {
+    --bg: #f5f0e8;
+    --card: #fffdf7;
+    --text: #1a1612;
+    --muted: #8a7f72;
+    --organico: #4a7c59;
+    --indiff: #5a5a5a;
+    --vetro: #2d6a8f;
+    --plastica: #c4621a;
+    --border: #e0d8cc;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: 2rem;
+    letter-spacing: -0.02em;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 0.72rem;
+    margin-top: 0.3rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .today-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
+    width: 100%;
+    max-width: 480px;
+    margin-bottom: 1.2rem;
+  }
+
+  .today-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+  }
+
+  .today-date {
+    font-family: 'Fraunces', serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+  }
+
+  .waste-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .waste-item {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.6rem 0.8rem;
+    border-radius: 8px;
+    font-size: 0.78rem;
+  }
+
+  .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .none-msg {
+    color: var(--muted);
+    font-size: 0.8rem;
+    padding: 0.4rem 0;
+  }
+
+  .deadline {
+    font-size: 0.68rem;
+    color: var(--muted);
+    margin-top: 0.8rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid var(--border);
+    letter-spacing: 0.04em;
+  }
+
+  .upcoming-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem 2rem;
+    width: 100%;
+    max-width: 480px;
+  }
+
+  .upcoming-title {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  .upcoming-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.75rem;
+  }
+
+  .upcoming-row:last-child { border-bottom: none; }
+
+  .upcoming-day { color: var(--muted); font-size: 0.68rem; }
+
+  .dots-row { display: flex; gap: 5px; }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem 1.4rem;
+    margin-top: 1.5rem;
+    justify-content: center;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+
+  .highlight { background: rgba(74,124,89,0.08); }
+  .highlight .dot-bg { background: rgba(74,124,89,0.12); border-radius: 6px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Spazzatura 2026</h1>
+  <div class="subtitle">Bergamo · Raccolta Differenziata</div>
+</header>
+
+<div class="today-card" id="todayCard">
+  <div class="today-label">Oggi</div>
+  <div class="today-date" id="todayDate"></div>
+  <div class="waste-list" id="wasteList"></div>
+  <div class="deadline">⏰ Esporre entro le 12:30</div>
+</div>
+
+<div class="upcoming-card">
+  <div class="upcoming-title">Prossime raccolte (7 giorni)</div>
+  <div id="upcomingList"></div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><span class="dot" style="background:var(--organico)"></span>Organico</div>
+  <div class="legend-item"><span class="dot" style="background:var(--indiff)"></span>Indifferenziato</div>
+  <div class="legend-item"><span class="dot" style="background:var(--vetro)"></span>Vetro &amp; Metallo</div>
+  <div class="legend-item"><span class="dot" style="background:var(--plastica)"></span>Plastica</div>
+</div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────────────────────
+// Format: "YYYY-MM-DD": [types]
+// O=Organico, I=Indifferenziato, V=Vetro+Metallo, P=Plastica
+// Extracted from PDF calendar
+
+const schedule = {
+  // GENNAIO 2026
+  "2026-01-03":["I","O"],"2026-01-07":["O","I"],
+  "2026-01-10":["V","P","I"],"2026-01-14":["O","I"],
+  "2026-01-17":["I","O"],"2026-01-21":["O","I"],
+  "2026-01-24":["V","P","I"],"2026-01-28":["O","I"],
+  "2026-01-31":["I","O"],
+  // FEBBRAIO 2026
+  "2026-02-04":["O","I"],"2026-02-07":["V","P","I"],
+  "2026-02-11":["O","I"],"2026-02-14":["I","O"],
+  "2026-02-18":["O","I"],"2026-02-21":["V","P","I"],
+  "2026-02-25":["O","I"],"2026-02-28":["I","O"],
+  // MARZO 2026
+  "2026-03-04":["O","I"],"2026-03-07":["V","P","I"],
+  "2026-03-11":["O","I"],"2026-03-14":["I","O"],
+  "2026-03-18":["O","I"],"2026-03-21":["V","P","I"],
+  "2026-03-25":["O","I"],"2026-03-28":["I","O"],
+  // APRILE 2026
+  "2026-04-01":["O","I"],"2026-04-04":["V","P","I"],
+  "2026-04-08":["O","I"],"2026-04-11":["I","O"],
+  "2026-04-15":["O","I"],"2026-04-18":["V","P","I"],
+  "2026-04-22":["O","I"],"2026-04-25":["I","O"],
+  "2026-04-29":["O","I"],
+  // MAGGIO 2026
+  "2026-05-02":["V","P","I"],"2026-05-06":["O","I"],
+  "2026-05-09":["I","O"],"2026-05-13":["O","I"],
+  "2026-05-16":["V","P","I"],"2026-05-20":["O","I"],
+  "2026-05-23":["I","O"],"2026-05-27":["O","I"],
+  "2026-05-30":["V","P","I"],
+  // GIUGNO 2026
+  "2026-06-03":["O","I"],"2026-06-06":["I","O"],
+  "2026-06-10":["O","I"],"2026-06-13":["V","P","I"],
+  "2026-06-16":["I","O"],"2026-06-17":["O","I"],
+  "2026-06-20":["I","O"],"2026-06-24":["O","I"],
+  "2026-06-27":["V","P","I"],"2026-06-30":["I","O"],
+  // LUGLIO 2026
+  "2026-07-01":["O","I"],"2026-07-04":["I","O"],
+  "2026-07-08":["O","I"],"2026-07-11":["V","P","I"],
+  "2026-07-15":["O","I"],"2026-07-18":["I","O"],
+  "2026-07-22":["O","I"],"2026-07-25":["V","P","I"],
+  "2026-07-29":["O","I"],
+  // AGOSTO 2026
+  "2026-08-01":["I","O"],"2026-08-05":["O","I"],
+  "2026-08-08":["V","P","I"],"2026-08-12":["O","I"],
+  "2026-08-15":["I","O"],"2026-08-19":["O","I"],
+  "2026-08-22":["V","P","I"],"2026-08-26":["O","I"],
+  "2026-08-29":["I","O"],
+};
+
+const typeInfo = {
+  O: { label: "Organico",        color: "var(--organico)" },
+  I: { label: "Indifferenziato", color: "var(--indiff)"   },
+  V: { label: "Vetro & Metallo", color: "var(--vetro)"    },
+  P: { label: "Plastica",        color: "var(--plastica)" },
+};
+
+const days = ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"];
+const months = ["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"];
+
+function toKey(d) {
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+
+function formatDate(d) {
+  return days[d.getDay()]+" "+d.getDate()+" "+months[d.getMonth()];
+}
+
+function renderDots(types) {
+  return types.map(t=>`<span class="dot" style="background:${typeInfo[t].color}" title="${typeInfo[t].label}"></span>`).join("");
+}
+
+// TODAY
+const today = new Date();
+const todayKey = toKey(today);
+const todayTypes = schedule[todayKey] || [];
+
+document.getElementById("todayDate").textContent = formatDate(today);
+
+const wasteList = document.getElementById("wasteList");
+if (todayTypes.length === 0) {
+  wasteList.innerHTML = `<div class="none-msg">Nessuna raccolta oggi.</div>`;
+} else {
+  wasteList.innerHTML = todayTypes.map(t => `
+    <div class="waste-item" style="background:${typeInfo[t].color}18">
+      <span class="dot" style="background:${typeInfo[t].color}"></span>
+      <span>${typeInfo[t].label}</span>
+    </div>`).join("");
+}
+
+// UPCOMING 7 DAYS
+const upcomingList = document.getElementById("upcomingList");
+let html = "";
+for (let i = 1; i <= 7; i++) {
+  const d = new Date(today);
+  d.setDate(today.getDate() + i);
+  const k = toKey(d);
+  const types = schedule[k] || [];
+  if (types.length > 0) {
+    html += `<div class="upcoming-row">
+      <span>${formatDate(d)}</span>
+      <div class="dots-row">${renderDots(types)}</div>
+    </div>`;
+  }
+}
+upcomingList.innerHTML = html || `<div class="none-msg">Nessuna raccolta nei prossimi 7 giorni.</div>`;
+</script>
+</body>
+</html>
